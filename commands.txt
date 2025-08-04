@@ -1,0 +1,61 @@
+# Commands for managing dependencies and virtual environments in Git Bash
+
+# 1. Create a virtual environment (for Windows):
+python -m venv airbnb_venv
+
+# 2. Activate the virtual environment in Git Bash:
+source airbnb_venv/Scripts/activate
+
+# 3. Install dependencies from requirements.txt:
+pip install -r requirements.txt
+
+# 4. Install dependencies with no cache (for resolving long file paths issues):
+pip install --no-cache-dir -r requirements.txt
+
+# 5. Upgrade pip (if necessary):
+pip install --upgrade pip
+
+# 6. Install individual packages:
+pip install <package_name>
+
+# 7. Uninstall a package:
+pip uninstall <package_name>
+
+# 8. Freeze the installed packages into a requirements.txt file:
+pip freeze > requirements.txt
+
+# 9. Check installed packages:
+pip list
+
+# 10. Check if there is an issue with installed packages:
+pip check
+
+# 11. Install a specific version of a package:
+pip install <package_name>==<version_number>
+
+# 12. Show details about a particular installed package:
+pip show <package_name>
+
+# Commands for running Python files in Git Bash:
+
+# 1. Navigate to the correct directory:
+cd path/to/your/script
+
+# Example:
+cd scripts/data_generation
+
+# 2. Run a Python file using the virtual environment:
+python path/to/your/script.py
+
+# Example:
+python scripts/data_generation/cosmodb_generate_mock_data.py
+
+# 3. Run a Python file with arguments (if your script requires arguments):
+python path/to/your/script.py --records 10
+
+# Example:
+python scripts/data_generation/cosmodb_generate_mock_data.py --records 10
+
+# 4. Complete Example for 1 and 2
+cd scripts/data_generation
+python cosmodb_generate_mock_data.py --records 10

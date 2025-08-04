@@ -1,0 +1,47 @@
+{
+    "name": "AirBnBCDCPipeline",
+    "properties": {
+        "activities": [
+            {
+                "name": "CustomerDimLoad",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "LoadCustomerDimDataToSynapse", 
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "BookingDataTransformAndComputeAggregateFactData",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "CustomerDimLoad",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "LoadBookingFact", 
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            }
+        ],
+        "annotations": []
+    }
+}

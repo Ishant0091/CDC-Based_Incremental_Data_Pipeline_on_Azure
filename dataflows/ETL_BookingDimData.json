@@ -1,0 +1,102 @@
+{
+    "name": "ETL_BookingDimData",
+    "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "dataset": {
+                        "referenceName": "CosmoDBBookingDataset",
+                        "type": "DatasetReference"
+                    },
+                    "name": "BookingData"
+                },
+                {
+                    "dataset": {
+                        "referenceName": "SynapseSQLPoolBookingsDimTable",
+                        "type": "DatasetReference"
+                    },
+                    "name": "SynapseBookingDimTable"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "SynapseSQLPoolBookingsDimTable",
+                        "type": "DatasetReference"
+                    },
+                    "name": "SinkSynapseBookingDimTable",
+                    "rejectedDataLinkedService": {
+                        "referenceName": "LinkedService_RejectedData",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "DataQualityCheck"
+                },
+                {
+                    "name": "DerivedColumn"
+                },
+                {
+                    "name": "JoinWithSynapse"
+                },
+                {
+                    "name": "SetInsertAndUpdateAlterRowPolicies"
+                },
+                {
+                    "name": "CastColumns"
+                },
+                {
+                    "name": "SpecificColumns"
+                },
+                {
+                    "name": "FinalColumns"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          check_out_date as date,",
+                "          customer_id as short,",
+                "          timestamp as timestamp,",
+                "          owner_id as string,",
+                "          check_in_date as date,",
+                "          property_id as string,",
+                "          amount as double,",
+                "          booking_id as string,",
+                "          currency as string,",
+                "          property_location as (city as string, country as string),",
+                "          booking_date as timestamp",
+                "     ),",
+                "     allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     enableChangeFeed: true,",
+                "     changeFeedStartFromTheBeginning: false,",
+                "     format: 'document',",
+                "     systemColumns: false) ~> BookingData",
+                "BookingData split(check_out_date < check_in_date,",
+                "     disjoint: true) ~> DataQualityCheck@(BadRecords, AcceptedRecords)",
+                "DataQualityCheck@AcceptedRecords derive(stay_duration = (toTimestamp(check_out_date)-toTimestamp(check_in_date)) / 86400000,",
+                "          booking_year = year(booking_date),",
+                "          booking_month = month(booking_date),",
+                "          full_address = concat(property_location.city, ',', property_location.country),",
+                "          city = property_location.city,",
+                "          country = property_location.country",
+                "     ) ~> DerivedColumn",
+                "DerivedColumn select(mapColumn(",
+                "          booking_id,",
+                "          property_id,",
+                "          customer_id,",
+                "          owner_id,",
+                "          check_in_date,",
+                "          check_out_date,",
+                "          amount",
+                "     )) ~> FinalColumns",
+                "FinalColumns sink(allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     format: 'table') ~> SinkSynapseBookingDimTable"
+            ]
+        }
+    }
+}

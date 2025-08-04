@@ -1,0 +1,232 @@
+{
+    "name": "LoadCustomerDimDataToSynapse",
+    "properties": {
+        "activities": [
+            {
+                "name": "Get MetadataOfEachFileInCustomerRawDataContainer",
+                "type": "GetMetadata",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "StgAccountCustomerDataRawContainer",
+                        "type": "DatasetReference"
+                    },
+                    "fieldList": [
+                        "childItems"
+                    ],
+                    "storeSettings": {
+                        "type": "AzureBlobFSReadSettings",
+                        "recursive": true,
+                        "enablePartitionDiscovery": false
+                    },
+                    "formatSettings": {
+                        "type": "DelimitedTextReadSettings"
+                    }
+                }
+            },
+            {
+                "name": "ForEachFileInCustomerRawContainer",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Get MetadataOfEachFileInCustomerRawDataContainer",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Get MetadataOfEachFileInCustomerRawDataContainer').output.childItems",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "CopyFileDataToSynapseSQLPool",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "DelimitedTextSource",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSReadSettings",
+                                        "recursive": true,
+                                        "wildcardFolderPath": {
+                                            "value": "customer_raw_data",
+                                            "type": "Expression"
+                                        },
+                                        "wildcardFileName": {
+                                            "value": "@item().name",
+                                            "type": "Expression"
+                                        },
+                                        "enablePartitionDiscovery": false
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextReadSettings"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "SqlDWSink",
+                                    "writeBehavior": "Upsert",
+                                    "upsertSettings": {
+                                        "keys": [
+                                            "customer_id"
+                                        ],
+                                        "interimSchemaName": ""
+                                    },
+                                    "sqlWriterUseTableLock": false
+                                },
+                                "enableStaging": false,
+                                "validateDataConsistency": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "StgAccountCustomerDataRawContainer",
+                                    "type": "DatasetReference"
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "SynapseSQLPoolCustomerDimTable",
+                                    "type": "DatasetReference"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "CopyFileDataToArchiveContainer",
+                            "type": "Copy",
+                            "dependsOn": [
+                                {
+                                    "activity": "CopyFileDataToSynapseSQLPool",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "DelimitedTextSource",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSReadSettings",
+                                        "recursive": true,
+                                        "wildcardFolderPath": "customer_raw_data",
+                                        "wildcardFileName": {
+                                            "value": "@item().name",
+                                            "type": "Expression"
+                                        },
+                                        "enablePartitionDiscovery": false
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextReadSettings"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "DelimitedTextSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextWriteSettings",
+                                        "quoteAllText": true,
+                                        "fileExtension": ".csv"
+                                    }
+                                },
+                                "enableStaging": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "StgAccountCustomerDataRawContainer",
+                                    "type": "DatasetReference"
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "StgAccountCustomerDataArchiveContainer",
+                                    "type": "DatasetReference"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "DeleteRawDataFile",
+                            "type": "Delete",
+                            "dependsOn": [
+                                {
+                                    "activity": "CopyFileDataToArchiveContainer",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "0.12:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "dataset": {
+                                    "referenceName": "StgAccountCustomerDataRawContainer",
+                                    "type": "DatasetReference"
+                                },
+                                "enableLogging": false,
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "wildcardFileName": {
+                                        "value": "@item().name",
+                                        "type": "Expression"
+                                    },
+                                    "enablePartitionDiscovery": false
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "annotations": []
+    }
+}

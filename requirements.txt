@@ -1,0 +1,3 @@
+azure-cosmos==4.2.0         # For Cosmos DB interaction
+faker==18.6.1               # For generating mock data
+pyyaml==6.0.2                # For parsing YAML configuration files
